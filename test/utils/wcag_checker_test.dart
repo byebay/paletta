@@ -1,0 +1,1 @@
+import 'package:flutter_test/flutter_test.dart';\n\nvoid main() {\n  test('wcag checker placeholder test', () {\n    expect(1 + 1, 2);\n  });\n}\n

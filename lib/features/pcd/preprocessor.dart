@@ -1,0 +1,1 @@
+class Preprocessor {\n  // Resize + normalize image data\n}\n

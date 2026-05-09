@@ -1,0 +1,1 @@
+import 'package:flutter/material.dart';\nimport 'app.dart';\n\nvoid main() => runApp(const PalettaApp());\n

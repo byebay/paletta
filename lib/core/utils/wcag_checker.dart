@@ -1,0 +1,1 @@
+class WcagChecker {\n  // Contrast ratio checking utilities\n}\n

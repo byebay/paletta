@@ -1,0 +1,1 @@
+class EnvConfig {\n  final double confidenceThreshold;\n  final int inputSize;\n  final int kValue;\n\n  EnvConfig({required this.confidenceThreshold, required this.inputSize, required this.kValue});\n\n  // TODO: implement env loading\n}\n

@@ -1,0 +1,1 @@
+class CloudRepository {\n  // MongoDB Atlas repository\n}\n

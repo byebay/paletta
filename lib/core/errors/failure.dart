@@ -1,0 +1,1 @@
+class Failure {\n  final String message;\n  Failure(this.message);\n}\n

@@ -1,0 +1,1 @@
+import 'package:flutter/widgets.dart';\n\nclass PaletteSwatchPainter extends CustomPainter {\n  @override\n  void paint(Canvas canvas, Size size) {}\n\n  @override\n  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;\n}\n

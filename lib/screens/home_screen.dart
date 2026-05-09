@@ -1,0 +1,1 @@
+import 'package:flutter/widgets.dart';\n\nclass HomeScreen extends StatelessWidget {\n  const HomeScreen({super.key});\n\n  @override\n  Widget build(BuildContext context) => const SizedBox.shrink();\n}\n

@@ -1,0 +1,1 @@
+class LocalRepository {\n  // Hive local storage\n}\n
