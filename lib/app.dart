@@ -1,1 +1,19 @@
-import 'package:flutter/material.dart';\nimport 'screens/home_screen.dart';\n\nclass PalettaApp extends StatelessWidget {\n  const PalettaApp({super.key});\n\n  @override\n  Widget build(BuildContext context) {\n    return MaterialApp(\n      title: 'Paletta',\n      theme: ThemeData(primarySwatch: Colors.blue),\n      home: const HomeScreen(),\n    );\n  }\n}\n
+import 'package:flutter/material.dart';
+import 'screens/home_screen.dart';
+
+class App extends StatelessWidget {
+  const App({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Paletta',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}

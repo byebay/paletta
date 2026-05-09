@@ -1,1 +1,0 @@
-class PaletteEntry {\n  // Palette model\n}\n

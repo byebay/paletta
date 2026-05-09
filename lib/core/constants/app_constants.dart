@@ -1,1 +1,0 @@
-class AppConstants {\n  static const String appName = 'Paletta';\n}\n

@@ -1,1 +1,0 @@
-class ModelLoader {\n  // Model loading helper\n}\n

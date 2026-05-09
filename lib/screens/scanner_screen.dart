@@ -1,1 +1,0 @@
-import 'package:flutter/widgets.dart';\n\nclass ScannerScreen extends StatelessWidget {\n  const ScannerScreen({super.key});\n\n  @override\n  Widget build(BuildContext context) => const SizedBox.shrink();\n}\n

@@ -1,1 +1,0 @@
-class GalleryProvider {\n  // Gallery provider\n}\n

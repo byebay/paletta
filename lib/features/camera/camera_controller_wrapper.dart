@@ -1,1 +1,0 @@
-class CameraControllerWrapper {\n  // Camera acquisition wrapper\n}\n

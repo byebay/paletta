@@ -1,1 +1,0 @@
-class IsolateRunner {\n  // Background thread runner\n}\n

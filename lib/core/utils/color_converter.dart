@@ -1,1 +1,0 @@
-class ColorConverter {\n  // RGB -> HEX -> CMYK utilities\n}\n

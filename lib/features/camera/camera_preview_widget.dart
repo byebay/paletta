@@ -1,1 +1,0 @@
-import 'package:flutter/widgets.dart';\n\nclass CameraPreviewWidget extends StatelessWidget {\n  const CameraPreviewWidget({super.key});\n\n  @override\n  Widget build(BuildContext context) => const SizedBox.shrink();\n}\n
