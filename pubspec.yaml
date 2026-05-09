@@ -1,1 +1,53 @@
-name: paletta\ndescription: A Flutter palette extraction and inference app.\npublish_to: 'none'\nenvironment:\n  sdk: '>=2.18.0 <4.0.0'\n  flutter: '>=3.0.0'\ndependencies:\n  flutter:\n    sdk: flutter\n  cupertino_icons: ^1.0.2\n  camera: ^0.10.0\n  flutter_isolate: ^2.0.0\n  tflite_flutter: ^0.10.0\n  provider: ^6.0.0\n  hive: ^2.2.3\n  hive_flutter: ^1.1.0\ndev_dependencies:\n  flutter_test:\n    sdk: flutter\n  flutter_lints: ^2.0.0\n
+name: paletta
+description: Real-Time Color Palette Extractor with Edge AI
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # --- Camera ---
+  camera: ^0.10.5+9
+  permission_handler: ^11.3.1
+
+  # --- ML Inference ---
+  tflite_flutter: ^0.10.4
+
+  # --- Image Processing (PCD) ---
+  image: ^4.2.0
+
+  # --- Environment Config ---
+  flutter_dotenv: ^5.1.0
+
+  # --- State Management ---
+  provider: ^6.1.2
+
+  # --- Local Database ---
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # --- Cloud Database ---
+  realm: ^3.4.0
+
+  # --- Utilities ---
+  path_provider: ^2.1.3
+  uuid: ^4.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.11
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/models/
+    - assets/labels/
+    - .env
