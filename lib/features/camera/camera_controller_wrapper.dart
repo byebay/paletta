@@ -20,7 +20,7 @@ class CameraControllerWrapper {
       // Pakai kamera belakang (index 0)
       _controller = CameraController(
         _cameras[0],
-        ResolutionPreset.high,
+        ResolutionPreset.medium,
         enableAudio: false,         // Tidak butuh audio
         imageFormatGroup: ImageFormatGroup.yuv420, // Format optimal untuk TFLite
       );
