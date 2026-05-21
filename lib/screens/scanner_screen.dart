@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
+import '../config/env_config.dart';
 import '../features/camera/camera_controller_wrapper.dart';
 import '../features/inference/isolate_runner.dart';
 import '../features/inference/model_loader.dart';
 import '../features/inference/yolo_inference_engine.dart';
+import '../features/pcd/kmeans_extractor.dart';
 
 class ScannerScreen extends StatefulWidget {
   final ModelLoader modelLoader;
@@ -38,13 +40,6 @@ class _ScannerScreenState extends State<ScannerScreen>
   Future<void> _initCamera() async {
     await _cameraWrapper.initialize();
     if (!mounted) return;
-
-    // Timer inference — setiap 2 detik ambil foto lalu proses
-    _inferenceTimer = Timer.periodic(
-      const Duration(milliseconds: 2000),
-      (_) => _runInference(),
-    );
-
     setState(() {});
   }
 
@@ -68,6 +63,19 @@ class _ScannerScreenState extends State<ScannerScreen>
         setState(() => _detections = results);
         if (results.isNotEmpty) {
           print('Detected: ${results.first}');
+          
+          final extractor = KMeansExtractor(k: EnvConfig.kValue);
+          final palette = extractor.extract(
+            image: decoded,
+            x1: results.first.x1,
+            y1: results.first.y1,
+            x2: results.first.x2,
+            y2: results.first.y2,
+          );
+
+          for (final color in palette) {
+            print('Color: ${color.toHex()} | CMYK: ${color.toCMYK()}');
+          }
         }
       }
     } catch (e) {
@@ -89,7 +97,6 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   @override
   void dispose() {
-    _inferenceTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _cameraWrapper.dispose();
     super.dispose();
@@ -111,8 +118,62 @@ class _ScannerScreenState extends State<ScannerScreen>
         title: const Text('Scanner 🎨',
             style: TextStyle(color: Colors.white)),
       ),
-      body: SizedBox.expand(
-        child: CameraPreview(_cameraWrapper.controller!),
+      body: Column(
+        children: [
+          // Preview kamera dengan aspect ratio yang benar
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _cameraWrapper.controller!.value.previewSize!.height,
+                height: _cameraWrapper.controller!.value.previewSize!.width,
+                child: CameraPreview(_cameraWrapper.controller!),
+              ),
+            ),
+          ),
+
+          // Area tombol di bagian bawah
+          Container(
+            color: Colors.black,
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Placeholder kiri
+                const SizedBox(width: 64),
+
+                // Tombol foto
+                GestureDetector(
+                  onTap: _isProcessing ? null : _runInference,
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 4),
+                      color: _isProcessing
+                          ? Colors.grey
+                          : Colors.white.withOpacity(0.2),
+                    ),
+                    child: _isProcessing
+                        ? const Padding(
+                            padding: EdgeInsets.all(20),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(Icons.camera_alt,
+                            color: Colors.white, size: 32),
+                  ),
+                ),
+
+                // Placeholder kanan
+                const SizedBox(width: 64),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
