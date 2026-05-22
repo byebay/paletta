@@ -36,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         title: const Text(
-          'Paletta 🎨',
+          'Paletta',
           style: TextStyle(color: Colors.white),
         ),
         actions: [

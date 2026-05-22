@@ -9,6 +9,9 @@ import '../features/inference/isolate_runner.dart';
 import '../features/inference/model_loader.dart';
 import '../features/inference/yolo_inference_engine.dart';
 import '../features/pcd/kmeans_extractor.dart';
+import '../features/overlay/bounding_box_painter.dart';
+import '../features/overlay/palette_swatch_painter.dart';
+import '../features/pcd/kmeans_extractor.dart';
 
 class ScannerScreen extends StatefulWidget {
   final ModelLoader modelLoader;
@@ -27,6 +30,9 @@ class _ScannerScreenState extends State<ScannerScreen>
   bool _isProcessing = false;
   Timer? _inferenceTimer;
   List<DetectionResult> _detections = [];
+  List<PaletteColor> _palette = [];
+  img.Image? _capturedImage;
+  Size _imageSize = Size.zero;
 
   @override
   void initState() {
@@ -48,40 +54,38 @@ class _ScannerScreenState extends State<ScannerScreen>
     _isProcessing = true;
 
     try {
-      // Ambil foto dari kamera
       final xFile = await _cameraWrapper.controller!.takePicture();
       final bytes = await File(xFile.path).readAsBytes();
-
-      // Decode foto → img.Image
       final decoded = img.decodeImage(bytes);
       if (decoded == null) return;
 
-      // Jalankan inference
+      _capturedImage = decoded;
+      _imageSize = Size(decoded.width.toDouble(), decoded.height.toDouble());
+
       final results = await _isolateRunner.runFromImage(decoded);
 
-      if (mounted) {
-        setState(() => _detections = results);
-        if (results.isNotEmpty) {
-          print('Detected: ${results.first}');
-          
-          final extractor = KMeansExtractor(k: EnvConfig.kValue);
-          final palette = extractor.extract(
-            image: decoded,
-            x1: results.first.x1,
-            y1: results.first.y1,
-            x2: results.first.x2,
-            y2: results.first.y2,
-          );
+      List<PaletteColor> palette = [];
+      if (results.isNotEmpty) {
+        final extractor = KMeansExtractor(k: EnvConfig.kValue);
+        palette = extractor.extract(
+          image: decoded,
+          x1: results.first.x1,
+          y1: results.first.y1,
+          x2: results.first.x2,
+          y2: results.first.y2,
+        );
+      }
 
-          for (final color in palette) {
-            print('Color: ${color.toHex()} | CMYK: ${color.toCMYK()}');
-          }
-        }
+      if (mounted) {
+        setState(() {
+          _detections = results;
+          _palette = palette;
+        });
       }
     } catch (e) {
       print('Inference error: $e');
     } finally {
-      _isProcessing = false;
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -115,32 +119,84 @@ class _ScannerScreenState extends State<ScannerScreen>
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Scanner 🎨',
+        title: const Text('Scanner',
             style: TextStyle(color: Colors.white)),
       ),
       body: Column(
         children: [
-          // Preview kamera dengan aspect ratio yang benar
           Expanded(
-            child: FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: _cameraWrapper.controller!.value.previewSize!.height,
-                height: _cameraWrapper.controller!.value.previewSize!.width,
-                child: CameraPreview(_cameraWrapper.controller!),
-              ),
+            child: Stack(
+              children: [
+                // Camera preview
+                FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _cameraWrapper.controller!.value.previewSize!.height,
+                    height: _cameraWrapper.controller!.value.previewSize!.width,
+                    child: CameraPreview(_cameraWrapper.controller!),
+                  ),
+                ),
+
+                // Bounding box overlay
+                if (_detections.isNotEmpty)
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: BoundingBoxPainter(
+                        detections: _detections,
+                        imageSize: _imageSize,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
 
-          // Area tombol di bagian bawah
+          // Tombol foto
           Container(
             color: Colors.black,
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Placeholder kiri
-                const SizedBox(width: 64),
+                // Palet warna
+                if (_palette.isNotEmpty) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: _palette.map((color) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Column(
+                          children: [
+                            // Lingkaran warna
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Color.fromRGBO(color.r, color.g, color.b, 1.0),
+                                border: Border.all(color: Colors.white, width: 2),
+                                boxShadow: const [
+                                  BoxShadow(color: Colors.black45, blurRadius: 4)
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            // Label HEX
+                            Text(
+                              color.toHex(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
                 // Tombol foto
                 GestureDetector(
@@ -167,9 +223,6 @@ class _ScannerScreenState extends State<ScannerScreen>
                             color: Colors.white, size: 32),
                   ),
                 ),
-
-                // Placeholder kanan
-                const SizedBox(width: 64),
               ],
             ),
           ),
