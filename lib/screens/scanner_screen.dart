@@ -64,15 +64,26 @@ class _ScannerScreenState extends State<ScannerScreen>
 
       final results = await _isolateRunner.runFromImage(decoded);
 
+      final extractor = KMeansExtractor(k: EnvConfig.kValue);
       List<PaletteColor> palette = [];
+
       if (results.isNotEmpty) {
-        final extractor = KMeansExtractor(k: EnvConfig.kValue);
+        // Ada deteksi → ekstrak dari area bounding box
         palette = extractor.extract(
           image: decoded,
           x1: results.first.x1,
           y1: results.first.y1,
           x2: results.first.x2,
           y2: results.first.y2,
+        );
+      } else {
+        // Tidak ada deteksi → ekstrak dari seluruh frame
+        palette = extractor.extract(
+          image: decoded,
+          x1: 0.0,
+          y1: 0.0,
+          x2: 1.0,
+          y2: 1.0,
         );
       }
 
@@ -128,13 +139,28 @@ class _ScannerScreenState extends State<ScannerScreen>
             child: Stack(
               children: [
                 // Camera preview
-                FittedBox(
-                  fit: BoxFit.cover,
-                  child: SizedBox(
-                    width: _cameraWrapper.controller!.value.previewSize!.height,
-                    height: _cameraWrapper.controller!.value.previewSize!.width,
-                    child: CameraPreview(_cameraWrapper.controller!),
-                  ),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isLandscape =
+                        MediaQuery.of(context).orientation == Orientation.landscape;
+                    final previewSize =
+                        _cameraWrapper.controller!.value.previewSize!;
+
+                    // Swap width/height sesuai orientasi
+                    final previewWidth =
+                        isLandscape ? previewSize.width : previewSize.height;
+                    final previewHeight =
+                        isLandscape ? previewSize.height : previewSize.width;
+
+                    return FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: previewWidth,
+                        height: previewHeight,
+                        child: CameraPreview(_cameraWrapper.controller!),
+                      ),
+                    );
+                  },
                 ),
 
                 // Bounding box overlay
