@@ -108,6 +108,6 @@ class YoloInferenceEngine {
 
     print('Max score: $globalMaxScore (threshold: $threshold)');
     results.sort((a, b) => b.confidence.compareTo(a.confidence));
-    return results.take(10).toList();
+    return results.take(2).toList();
   }
 }

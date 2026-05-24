@@ -26,4 +26,14 @@ class EnvConfig {
   // --- App ---
   static int get maxSavedPalettes =>
       int.tryParse(dotenv.env['MAX_SAVED_PALETTES'] ?? '100') ?? 100;
+
+  // MongoDB
+  static String get mongoUri =>
+      dotenv.env['MONGO_URI'] ?? '';
+
+  static String get mongoDb =>
+      dotenv.env['MONGO_DB'] ?? 'paletta';
+
+  static String get mongoCollection =>
+      dotenv.env['MONGO_COLLECTION'] ?? 'palettes';
 }

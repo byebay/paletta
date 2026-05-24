@@ -10,6 +10,11 @@ import '../features/overlay/bounding_box_painter.dart';
 import '../features/pcd/kmeans_extractor.dart';
 import '../config/env_config.dart';
 import 'dart:typed_data';
+import 'package:provider/provider.dart';
+import '../features/gallery/providers/gallery_provider.dart';
+import '../core/utils/image_enhancer.dart';
+import 'dart:io';
+import '../core/utils/image_storage_service.dart';
 
 enum FlashToggleMode { off, alwaysOn, onCapture }
 
@@ -67,7 +72,7 @@ class _ScannerScreenState extends State<ScannerScreen>
   bool _showShutterEffect = false;
 
   // Toggle
-  bool _showBoundingBox = true;
+  bool _showBoundingBox = false;
   FlashToggleMode _flashMode = FlashToggleMode.off;
 
   @override
@@ -151,9 +156,25 @@ class _ScannerScreenState extends State<ScannerScreen>
 
       if (mounted) {
         setState(() {
-          _detections = results; // Tampilkan bounding box untuk frame yang dicapture
+          _detections = results;
           _palette = palette;
         });
+
+        final paths = await ImageStorageService.saveImageInBackground(converted);
+
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+
+        // Simpan ke Hive + MongoDB
+        final label = results.isNotEmpty ? results.first.label : 'unknown';
+        await context.read<GalleryProvider>().savePalette(
+          palette: palette,
+          objectLabel: label,
+          imagePath: paths['originalPath'],
+          thumbnailPath: paths['thumbnailPath'],
+        );
+
+        print('Palette saved: $label');
       }
     } catch (e) {
       print('Capture error: $e');

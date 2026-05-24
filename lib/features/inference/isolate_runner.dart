@@ -8,9 +8,9 @@ import 'yolo_inference_engine.dart';
 import '../../screens/scanner_screen.dart';
 
 class _PreprocessPayload {
-  final CameraFrameData frameData;
+  final CameraFrameData cameraImage;
   final int inputSize;
-  _PreprocessPayload(this.frameData, this.inputSize);
+  _PreprocessPayload(this.cameraImage, this.inputSize);
 }
 
 class _ImagePayload {
@@ -24,9 +24,9 @@ class IsolateRunner {
 
   IsolateRunner(this._engine);
 
-  // Dari CameraImage (stream)
-  Future<List<DetectionResult>> run(CameraFrameData frameData) async {
-    final payload = _PreprocessPayload(frameData, EnvConfig.inputSize);
+  // Dari CameraFrameData (stream)
+  Future<List<DetectionResult>> run(CameraFrameData cameraImage) async {
+    final payload = _PreprocessPayload(cameraImage, EnvConfig.inputSize);
     final inputTensor = await compute(_preprocessInBackground, payload);
     if (inputTensor == null) return [];
     return _engine.run(inputTensor);
@@ -39,22 +39,22 @@ class IsolateRunner {
     if (inputTensor == null) return [];
     return _engine.run(inputTensor);
   }
-
-  // Konversi CameraImage ke img.Image untuk ekstraksi palet
-  Future<img.Image?> convertFrame(CameraFrameData frameData) async {
-    final payload = _PreprocessPayload(frameData, EnvConfig.inputSize);
+  
+  Future<img.Image?> convertFrame(CameraFrameData cameraImage) async {
+    final payload = _PreprocessPayload(cameraImage, EnvConfig.inputSize);
     return await compute(_convertFrameInBackground, payload);
   }
+
+  // Top-level function
+  Future<img.Image?> _convertFrameInBackground(_PreprocessPayload payload) async {
+    return Preprocessor.convertToImage(payload.cameraImage);
+  }
+}
+
+Future<Float32List?> _preprocessInBackground(_PreprocessPayload payload) async {
+  return await Preprocessor.process(payload.cameraImage, payload.inputSize);
 }
 
 Future<Float32List?> _preprocessImageInBackground(_ImagePayload payload) async {
   return Preprocessor.processImage(payload.image, payload.inputSize);
-}
-
-Future<Float32List?> _preprocessInBackground(_PreprocessPayload payload) async {
-  return Preprocessor.processFrameData(payload.frameData, payload.inputSize);
-}
-
-Future<img.Image?> _convertFrameInBackground(_PreprocessPayload payload) async {
-  return Preprocessor.convertFrameData(payload.frameData);
 }

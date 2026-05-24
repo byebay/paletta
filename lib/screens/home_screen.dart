@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../features/inference/model_loader.dart';
 import 'scanner_screen.dart';
+import '../features/gallery/screens/gallery_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -51,20 +52,36 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: Center(
-        child: ElevatedButton.icon(
-          onPressed: _modelLoader.isLoaded
-              ? () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          ScannerScreen(modelLoader: _modelLoader),
-                    ),
-                  )
-              : null,
-          icon: const Icon(Icons.camera_alt),
-          label: const Text('Mulai Scan'),
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton.icon(
+            onPressed: _modelLoader.isLoaded
+                ? () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ScannerScreen(modelLoader: _modelLoader),
+                      ),
+                    )
+                : null,
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('Mulai Scan'),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const GalleryScreen(),
+              ),
+            ),
+            icon: const Icon(Icons.photo_library),
+            label: const Text('Lihat Gallery'),
+          ),
+        ],
       ),
+    ),
     );
   }
 }
