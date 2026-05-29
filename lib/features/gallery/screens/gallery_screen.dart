@@ -61,6 +61,56 @@ class _PaletteCard extends StatelessWidget {
   final PaletteEntry entry;
   const _PaletteCard({required this.entry});
 
+  void _editLabel(BuildContext context) {
+    final controller = TextEditingController(text: entry.objectLabel);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text('Edit Nama',
+            style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Nama objek...',
+            hintStyle: const TextStyle(color: Colors.white38),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.white24),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.blue),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              final newLabel = controller.text.trim();
+              if (newLabel.isNotEmpty) {
+                context.read<GalleryProvider>().updateLabel(
+                      entry,
+                      newLabel,
+                    );
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Simpan',
+                style: TextStyle(color: Colors.blue)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -106,13 +156,22 @@ class _PaletteCard extends StatelessWidget {
                     const Icon(Icons.label_outline,
                         color: Colors.white54, size: 16),
                     const SizedBox(width: 6),
-                    Text(
-                      entry.objectLabel.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        letterSpacing: 1,
+                    GestureDetector(
+                      onTap: () => _editLabel(context),
+                      child: Row(
+                        children: [
+                          Text(
+                            entry.objectLabel.toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.edit, color: Colors.white38, size: 12),
+                        ],
                       ),
                     ),
                   ],

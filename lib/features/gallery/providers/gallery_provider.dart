@@ -33,6 +33,23 @@ class GalleryProvider extends ChangeNotifier {
     print('GalleryProvider initialized: ${_entries.length} entries');
   }
 
+  Future<void> updateLabel(PaletteEntry entry, String newLabel) async {
+    final updated = PaletteEntry(
+      id: entry.id,
+      objectLabel: newLabel,
+      colors: entry.colors,
+      createdAt: entry.createdAt,
+      imagePath: entry.imagePath,
+      thumbnailPath: entry.thumbnailPath,
+    );
+
+    await _local.save(updated);
+    await _cloud.save(updated);
+
+    _entries = _local.getAll();
+    notifyListeners();
+  }
+
   // Simpan palet baru
   Future<void> savePalette({
     required List<PaletteColor> palette,

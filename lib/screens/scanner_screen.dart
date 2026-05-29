@@ -15,6 +15,7 @@ import '../features/gallery/providers/gallery_provider.dart';
 import '../core/utils/image_enhancer.dart';
 import 'dart:io';
 import '../core/utils/image_storage_service.dart';
+import 'edit_screen.dart';
 
 enum FlashToggleMode { off, alwaysOn, onCapture }
 
@@ -75,6 +76,10 @@ class _ScannerScreenState extends State<ScannerScreen>
   bool _showBoundingBox = false;
   FlashToggleMode _flashMode = FlashToggleMode.off;
 
+  CameraImage? _latestFrame;
+  bool _isDetecting = false;
+  Timer? _detectionTimer;
+
   @override
   void initState() {
     super.initState();
@@ -88,53 +93,72 @@ class _ScannerScreenState extends State<ScannerScreen>
     await _cameraWrapper.initialize();
     if (!mounted) return;
 
-    // Stream HANYA memproses frame saat diminta untuk capture
     await _cameraWrapper.controller?.startImageStream((image) {
-      if (_captureNextFrame && _frameCompleter != null && !_frameCompleter!.isCompleted) {
-        _captureNextFrame = false;
-        _frameCompleter!.complete(CameraFrameData.fromCameraImage(image));
-      }
+      _latestFrame = image;
     });
+
+    // Hanya start timer jika toggle ON
+    if (_showBoundingBox) {
+      _detectionTimer = Timer.periodic(
+        const Duration(milliseconds: 2000),
+        (_) => _runDetection(),
+      );
+    }
 
     setState(() {});
   }
 
-  // Tombol capture — proses frame saat ini
-  Future<void> _captureAndExtract() async {
-    if (_isCapturing) return;
-    _isCapturing = true;
+  Future<void> _runDetection() async {
+    if (_isDetecting || _latestFrame == null) return;
+    _isDetecting = true;
+    try {
+      final frame = CameraFrameData.fromCameraImage(_latestFrame!);
+      final results = await _isolateRunner.run(frame);
+      if (mounted) setState(() => _detections = results);
+    } finally {
+      _isDetecting = false;
+    }
+  }
+
+  void _toggleBoundingBox() {
     setState(() {
-      _detections = []; // Sembunyikan bounding box lama saat mulai capture
+      _showBoundingBox = !_showBoundingBox;
+      _detections = []; // Bersihkan box saat dimatikan
     });
 
-    // Nyalakan flash jika mode onCapture
+    if (_showBoundingBox) {
+      // Nyalakan timer saat toggle ON
+      _detectionTimer = Timer.periodic(
+        const Duration(milliseconds: 2000),
+        (_) => _runDetection(),
+      );
+    } else {
+      // Matikan timer saat toggle OFF
+      _detectionTimer?.cancel();
+      _detectionTimer = null;
+    }
+  }
+
+  // Tombol capture — proses frame saat ini
+  Future<void> _captureAndExtract() async {
+    if (_isCapturing || _latestFrame == null) return;
+    _isCapturing = true;
+    setState(() {});
+
     if (_flashMode == FlashToggleMode.onCapture) {
       await _cameraWrapper.controller?.setFlashMode(FlashMode.torch);
-      await Future.delayed(const Duration(milliseconds: 500)); // Beri waktu AE menyesuaikan
+      await Future.delayed(const Duration(milliseconds: 200));
     }
 
     try {
-      _frameCompleter = Completer<CameraFrameData>();
-      _captureNextFrame = true;
-
-      // Efek shutter kamera
-      setState(() => _showShutterEffect = true);
-      Future.delayed(const Duration(milliseconds: 250), () {
-        if (mounted) setState(() => _showShutterEffect = false);
-      });
-
-      final frame = await _frameCompleter!.future;
-
-      // Dapatkan bounding box (inference hanya dilakukan saat capture)
+      final frame = CameraFrameData.fromCameraImage(_latestFrame!);
       final results = await _isolateRunner.run(frame);
-
       final converted = await _isolateRunner.convertFrame(frame);
       if (converted == null) return;
 
       final extractor = KMeansExtractor(k: EnvConfig.kValue);
       List<PaletteColor> palette;
 
-      // Ekstrak dari bounding box hanya jika toggle ON dan ada deteksi
       if (_showBoundingBox && results.isNotEmpty) {
         palette = extractor.extract(
           image: converted,
@@ -144,13 +168,10 @@ class _ScannerScreenState extends State<ScannerScreen>
           y2: results.first.y2,
         );
       } else {
-        // Fallback: ekstrak dari seluruh frame
         palette = extractor.extract(
           image: converted,
-          x1: 0.0,
-          y1: 0.0,
-          x2: 1.0,
-          y2: 1.0,
+          x1: 0.0, y1: 0.0,
+          x2: 1.0, y2: 1.0,
         );
       }
 
@@ -159,27 +180,25 @@ class _ScannerScreenState extends State<ScannerScreen>
           _detections = results;
           _palette = palette;
         });
+        
+        final label = (_showBoundingBox && results.isNotEmpty)
+            ? results.first.label
+            : 'unknown';
 
-        final paths = await ImageStorageService.saveImageInBackground(converted);
-
-        PaintingBinding.instance.imageCache.clear();
-        PaintingBinding.instance.imageCache.clearLiveImages();
-
-        // Simpan ke Hive + MongoDB
-        final label = results.isNotEmpty ? results.first.label : 'unknown';
-        await context.read<GalleryProvider>().savePalette(
-          palette: palette,
-          objectLabel: label,
-          imagePath: paths['originalPath'],
-          thumbnailPath: paths['thumbnailPath'],
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EditScreen(
+              capturedImage: converted,
+              detections: results,
+              label: label,
+            ),
+          ),
         );
-
-        print('Palette saved: $label');
       }
     } catch (e) {
       print('Capture error: $e');
     } finally {
-      // Matikan flash setelah capture jika mode onCapture
       if (_flashMode == FlashToggleMode.onCapture) {
         await _cameraWrapper.controller?.setFlashMode(FlashMode.off);
       }
@@ -204,6 +223,7 @@ class _ScannerScreenState extends State<ScannerScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive) {
+      _detectionTimer?.cancel();
       _cameraWrapper.controller?.setFlashMode(FlashMode.off);
       _cameraWrapper.controller?.stopImageStream();
       _cameraWrapper.dispose();
@@ -214,6 +234,7 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   @override
   void dispose() {
+    _detectionTimer?.cancel();
     _cameraWrapper.controller?.setFlashMode(FlashMode.off);
     WidgetsBinding.instance.removeObserver(this);
     _cameraWrapper.controller?.stopImageStream();
@@ -241,8 +262,7 @@ class _ScannerScreenState extends State<ScannerScreen>
         actions: [
           // Toggle bounding box
           IconButton(
-            onPressed: () =>
-                setState(() => _showBoundingBox = !_showBoundingBox),
+            onPressed: _toggleBoundingBox,
             icon: Icon(
               _showBoundingBox ? Icons.grid_on : Icons.grid_off,
               color: _showBoundingBox ? Colors.white : Colors.grey,
