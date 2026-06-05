@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
 import '../features/camera/camera_controller_wrapper.dart';
 import '../features/inference/isolate_runner.dart';
 import '../features/inference/model_loader.dart';
@@ -12,8 +11,6 @@ import '../config/env_config.dart';
 import 'dart:typed_data';
 import 'package:provider/provider.dart';
 import '../features/gallery/providers/gallery_provider.dart';
-import '../core/utils/image_enhancer.dart';
-import 'dart:io';
 import '../core/utils/image_storage_service.dart';
 import 'edit_screen.dart';
 
@@ -55,6 +52,46 @@ class PlaneData {
   PlaneData({required this.bytes, required this.bytesPerRow, this.bytesPerPixel});
 }
 
+class _CameraControlButton extends StatelessWidget {
+  final IconData icon;
+  final bool isActive;
+  final VoidCallback onTap;
+  final Color activeColor;
+
+  const _CameraControlButton({
+    required this.icon,
+    required this.isActive,
+    required this.onTap,
+    required this.activeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isActive
+              ? activeColor.withOpacity(0.2)
+              : Colors.black54,
+          border: Border.all(
+            color: isActive ? activeColor : Colors.white24,
+            width: 1.5,
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: isActive ? activeColor : Colors.white,
+          size: 18,
+        ),
+      ),
+    );
+  }
+}
+
 class _ScannerScreenState extends State<ScannerScreen>
     with WidgetsBindingObserver {
   final CameraControllerWrapper _cameraWrapper = CameraControllerWrapper();
@@ -73,12 +110,8 @@ class _ScannerScreenState extends State<ScannerScreen>
   bool _showShutterEffect = false;
 
   // Toggle
-  bool _showBoundingBox = false;
+  bool _showBoundingBox = true;
   FlashToggleMode _flashMode = FlashToggleMode.off;
-
-  CameraImage? _latestFrame;
-  bool _isDetecting = false;
-  Timer? _detectionTimer;
 
   @override
   void initState() {
@@ -93,72 +126,55 @@ class _ScannerScreenState extends State<ScannerScreen>
     await _cameraWrapper.initialize();
     if (!mounted) return;
 
+    // Stream HANYA memproses frame saat diminta untuk capture
     await _cameraWrapper.controller?.startImageStream((image) {
-      _latestFrame = image;
+      if (_captureNextFrame && _frameCompleter != null && !_frameCompleter!.isCompleted) {
+        _captureNextFrame = false;
+        _frameCompleter!.complete(CameraFrameData.fromCameraImage(image));
+      }
     });
-
-    // Hanya start timer jika toggle ON
-    if (_showBoundingBox) {
-      _detectionTimer = Timer.periodic(
-        const Duration(milliseconds: 2000),
-        (_) => _runDetection(),
-      );
-    }
 
     setState(() {});
-  }
-
-  Future<void> _runDetection() async {
-    if (_isDetecting || _latestFrame == null) return;
-    _isDetecting = true;
-    try {
-      final frame = CameraFrameData.fromCameraImage(_latestFrame!);
-      final results = await _isolateRunner.run(frame);
-      if (mounted) setState(() => _detections = results);
-    } finally {
-      _isDetecting = false;
-    }
-  }
-
-  void _toggleBoundingBox() {
-    setState(() {
-      _showBoundingBox = !_showBoundingBox;
-      _detections = []; // Bersihkan box saat dimatikan
-    });
-
-    if (_showBoundingBox) {
-      // Nyalakan timer saat toggle ON
-      _detectionTimer = Timer.periodic(
-        const Duration(milliseconds: 2000),
-        (_) => _runDetection(),
-      );
-    } else {
-      // Matikan timer saat toggle OFF
-      _detectionTimer?.cancel();
-      _detectionTimer = null;
-    }
   }
 
   // Tombol capture — proses frame saat ini
   Future<void> _captureAndExtract() async {
-    if (_isCapturing || _latestFrame == null) return;
+    if (_isCapturing) return;
     _isCapturing = true;
-    setState(() {});
+    setState(() {
+      _detections = []; // Sembunyikan bounding box lama saat mulai capture
+    });
 
+    // Nyalakan flash jika mode onCapture
     if (_flashMode == FlashToggleMode.onCapture) {
       await _cameraWrapper.controller?.setFlashMode(FlashMode.torch);
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future.delayed(const Duration(milliseconds: 500)); // Beri waktu AE menyesuaikan
     }
 
     try {
-      final frame = CameraFrameData.fromCameraImage(_latestFrame!);
+      _frameCompleter = Completer<CameraFrameData>();
+      _captureNextFrame = true;
+
+      // Efek shutter kamera
+      setState(() => _showShutterEffect = true);
+      Future.delayed(const Duration(milliseconds: 250), () {
+        if (mounted) setState(() => _showShutterEffect = false);
+      });
+
+      final frame = await _frameCompleter!.future;
+
+      // Dapatkan bounding box (inference hanya dilakukan saat capture)
       final results = await _isolateRunner.run(frame);
+
       final converted = await _isolateRunner.convertFrame(frame);
       if (converted == null) return;
+
+      final paths = await ImageStorageService.saveImageInBackground(converted);
 
       final extractor = KMeansExtractor(k: EnvConfig.kValue);
       List<PaletteColor> palette;
 
+      // Ekstrak dari bounding box hanya jika toggle ON dan ada deteksi
       if (_showBoundingBox && results.isNotEmpty) {
         palette = extractor.extract(
           image: converted,
@@ -168,10 +184,13 @@ class _ScannerScreenState extends State<ScannerScreen>
           y2: results.first.y2,
         );
       } else {
+        // Fallback: ekstrak dari seluruh frame
         palette = extractor.extract(
           image: converted,
-          x1: 0.0, y1: 0.0,
-          x2: 1.0, y2: 1.0,
+          x1: 0.0,
+          y1: 0.0,
+          x2: 1.0,
+          y2: 1.0,
         );
       }
 
@@ -180,10 +199,18 @@ class _ScannerScreenState extends State<ScannerScreen>
           _detections = results;
           _palette = palette;
         });
-        
-        final label = (_showBoundingBox && results.isNotEmpty)
-            ? results.first.label
-            : 'unknown';
+
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+
+        // Simpan ke Hive + MongoDB
+        final label = results.isNotEmpty ? results.first.label : 'unknown';
+        await context.read<GalleryProvider>().savePalette(
+          palette: palette,
+          objectLabel: label,
+          imagePath: paths['originalPath'],
+          thumbnailPath: paths['thumbnailPath'],
+        );
 
         Navigator.push(
           context,
@@ -195,15 +222,27 @@ class _ScannerScreenState extends State<ScannerScreen>
             ),
           ),
         );
+
+        print('Palette saved: $label');
       }
     } catch (e) {
       print('Capture error: $e');
     } finally {
+      // Matikan flash setelah capture jika mode onCapture
       if (_flashMode == FlashToggleMode.onCapture) {
         await _cameraWrapper.controller?.setFlashMode(FlashMode.off);
       }
       if (mounted) setState(() => _isCapturing = false);
     }
+  }
+
+  void _toggleBoundingBox() {
+    setState(() {
+      _showBoundingBox = !_showBoundingBox;
+      if (!_showBoundingBox) {
+        _detections = [];
+      }
+    });
   }
 
   Future<void> _toggleFlash() async {
@@ -223,7 +262,6 @@ class _ScannerScreenState extends State<ScannerScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive) {
-      _detectionTimer?.cancel();
       _cameraWrapper.controller?.setFlashMode(FlashMode.off);
       _cameraWrapper.controller?.stopImageStream();
       _cameraWrapper.dispose();
@@ -234,7 +272,6 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   @override
   void dispose() {
-    _detectionTimer?.cancel();
     _cameraWrapper.controller?.setFlashMode(FlashMode.off);
     WidgetsBinding.instance.removeObserver(this);
     _cameraWrapper.controller?.stopImageStream();
@@ -247,65 +284,37 @@ class _ScannerScreenState extends State<ScannerScreen>
     if (!_cameraWrapper.isInitialized) {
       return const Scaffold(
         backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Color(0xFF2196F3)),
+              SizedBox(height: 16),
+              Text('Menyiapkan kamera...',
+                  style: TextStyle(color: Colors.white54)),
+            ],
+          ),
+        ),
       );
     }
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text(
-          'Scanner',
-          style: TextStyle(color: Colors.white),
-        ),
-        actions: [
-          // Toggle bounding box
-          IconButton(
-            onPressed: _toggleBoundingBox,
-            icon: Icon(
-              _showBoundingBox ? Icons.grid_on : Icons.grid_off,
-              color: _showBoundingBox ? Colors.white : Colors.grey,
-            ),
-            tooltip: _showBoundingBox ? 'Sembunyikan Box' : 'Tampilkan Box',
-          ),
-
-          // Toggle senter 3 mode
-          IconButton(
-            onPressed: _toggleFlash,
-            icon: Icon(
-              _flashMode == FlashToggleMode.alwaysOn
-                  ? Icons.flash_on
-                  : _flashMode == FlashToggleMode.onCapture
-                      ? Icons.flash_auto
-                      : Icons.flash_off,
-              color: _flashMode == FlashToggleMode.off
-                  ? Colors.white
-                  : Colors.yellow,
-            ),
-            tooltip: _flashMode == FlashToggleMode.off
-                ? 'Senter: Off'
-                : _flashMode == FlashToggleMode.alwaysOn
-                    ? 'Senter: Selalu On'
-                    : 'Senter: Saat Capture',
-          ),
-        ],
-      ),
       body: Column(
         children: [
-          // Camera preview + overlay
+          // === CAMERA AREA ===
           Expanded(
             child: Stack(
               children: [
                 // Camera preview
-                FittedBox(
-                  fit: BoxFit.cover,
-                  child: SizedBox(
-                    width: _cameraWrapper
-                        .controller!.value.previewSize!.height,
-                    height: _cameraWrapper
-                        .controller!.value.previewSize!.width,
-                    child: CameraPreview(_cameraWrapper.controller!),
+                Positioned.fill(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _cameraWrapper.controller!.value.previewSize!.height,
+                      height: _cameraWrapper.controller!.value.previewSize!.width,
+                      child: CameraPreview(_cameraWrapper.controller!),
+                    ),
                   ),
                 ),
 
@@ -316,88 +325,136 @@ class _ScannerScreenState extends State<ScannerScreen>
                       painter: BoundingBoxPainter(
                         detections: _detections,
                         imageSize: Size(
-                          _cameraWrapper
-                              .controller!.value.previewSize!.height,
-                          _cameraWrapper
-                              .controller!.value.previewSize!.width,
+                          _cameraWrapper.controller!.value.previewSize!.height,
+                          _cameraWrapper.controller!.value.previewSize!.width,
                         ),
                       ),
                     ),
                   ),
 
-                // Shutter effect overlay
+                // Shutter effect
                 if (_showShutterEffect)
                   Positioned.fill(
+                    child: Container(color: Colors.white),
+                  ),
+
+                // Top controls overlay
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 8,
+                  left: 12,
+                  right: 12,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // App title
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'Paletta',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+
+                      // Control buttons
+                      Row(
+                        children: [
+                          // Toggle bounding box
+                          _CameraControlButton(
+                            icon: _showBoundingBox
+                                ? Icons.grid_on
+                                : Icons.grid_off,
+                            isActive: _showBoundingBox,
+                            onTap: _toggleBoundingBox,
+                            activeColor: const Color(0xFF2196F3),
+                          ),
+                          const SizedBox(width: 8),
+
+                          // Toggle flash
+                          _CameraControlButton(
+                            icon: _flashMode == FlashToggleMode.alwaysOn
+                                ? Icons.flash_on
+                                : _flashMode == FlashToggleMode.onCapture
+                                    ? Icons.flash_auto
+                                    : Icons.flash_off,
+                            isActive: _flashMode != FlashToggleMode.off,
+                            onTap: _toggleFlash,
+                            activeColor: Colors.yellow,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Detection label overlay
+                if (_detections.isNotEmpty && _showBoundingBox)
+                  Positioned(
+                    bottom: 12,
+                    left: 12,
                     child: Container(
-                      color: Colors.black,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2196F3),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_detections.first.label} '
+                        '${(_detections.first.confidence * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
               ],
             ),
           ),
 
-          // Area bawah — palet + tombol
+          // === BOTTOM AREA ===
           Container(
-            color: Colors.black,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            color: Colors.white,
+            padding: EdgeInsets.only(
+              top: 20,
+              left: 24,
+              right: 24,
+              bottom: 20,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Palet warna
-                if (_palette.isNotEmpty) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: _palette.map((color) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Color.fromRGBO(
-                                    color.r, color.g, color.b, 1.0),
-                                border:
-                                    Border.all(color: Colors.white, width: 2),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black45,
-                                    blurRadius: 4,
-                                  )
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              color.toHex(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-
-                // Tombol capture
+                const Expanded(child: SizedBox()),
                 GestureDetector(
                   onTap: _isCapturing ? null : _captureAndExtract,
-                  child: Container(
-                    width: 72,
-                    height: 72,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 68,
+                    height: 68,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 4),
                       color: _isCapturing
-                          ? Colors.grey
-                          : Colors.white.withOpacity(0.2),
+                          ? Colors.grey.shade300
+                          : const Color(0xFF2196F3),
+                      boxShadow: _isCapturing
+                          ? []
+                          : [
+                              BoxShadow(
+                                color: const Color(0xFF2196F3).withOpacity(0.35),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
                     ),
                     child: _isCapturing
                         ? const Padding(
@@ -407,13 +464,11 @@ class _ScannerScreenState extends State<ScannerScreen>
                               strokeWidth: 2,
                             ),
                           )
-                        : const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 32,
-                          ),
+                        : const Icon(Icons.camera_alt, color: Colors.white, size: 28),
                   ),
                 ),
+                const SizedBox(width: 16),
+                const Expanded(child: SizedBox()),
               ],
             ),
           ),

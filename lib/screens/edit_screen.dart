@@ -285,126 +285,214 @@ class _EditScreenState extends State<EditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text('Edit Foto',
-            style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF212121)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Edit Foto',
+          style: TextStyle(
+            color: Color(0xFF212121),
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(color: Colors.grey.shade200, height: 1),
+        ),
         actions: [
-          // Tombol simpan
-          TextButton.icon(
-            onPressed: _isSaving ? null : _save,
-            icon: _isSaving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.save, color: Colors.white),
-            label: const Text('Simpan',
-                style: TextStyle(color: Colors.white)),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: ElevatedButton.icon(
+              onPressed: _isSaving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2196F3),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+              ),
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.save_alt, size: 16),
+              label: Text(_isSaving ? 'Menyimpan...' : 'Simpan',
+                  style: const TextStyle(fontSize: 13)),
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Preview foto
+          // === PHOTO PREVIEW ===
           Expanded(
             flex: 3,
             child: Stack(
-              alignment: Alignment.center,
+              fit: StackFit.expand,
               children: [
+                Container(color: const Color(0xFFF5F5F5)),
                 if (_previewBytes != null)
                   Image.memory(
                     _previewBytes!,
                     fit: BoxFit.contain,
                   )
                 else
-                  const CircularProgressIndicator(),
+                  const Center(
+                    child: CircularProgressIndicator(
+                        color: Color(0xFF2196F3)),
+                  ),
 
-                // Loading overlay saat processing
+                // Loading overlay
                 if (_isProcessing)
                   Container(
-                    color: Colors.black54,
+                    color: Colors.white54,
                     child: const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                              color: Color(0xFF2196F3)),
+                          SizedBox(height: 12),
+                          Text('Memproses...',
+                              style: TextStyle(
+                                  color: Color(0xFF2196F3),
+                                  fontSize: 12)),
+                        ],
+                      ),
                     ),
                   ),
               ],
             ),
           ),
 
-          // Palette preview
-          if (_palette.isNotEmpty)
-            Container(
-              color: Colors.black,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: _palette.map((color) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color.fromRGBO(color.r, color.g, color.b, 1.0),
-                            border: Border.all(color: Colors.white, width: 1.5),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          color.toHex(),
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 8),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-
+          // === PALETTE + LABEL ===
           Container(
-            color: Colors.black,
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: Row(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.label_outline, color: Colors.white54, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _labelController,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    decoration: const InputDecoration(
-                      hintText: 'Nama objek...',
-                      hintStyle: TextStyle(color: Colors.white38),
-                      border: InputBorder.none,
-                      isDense: true,
-                    ),
-                    textCapitalization: TextCapitalization.words,
+                // Label field
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.label_outline,
+                          color: Color(0xFF2196F3), size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _labelController,
+                          style: const TextStyle(
+                              color: Color(0xFF212121),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500),
+                          decoration: const InputDecoration(
+                            hintText: 'Nama objek...',
+                            hintStyle: TextStyle(color: Colors.grey),
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
+                          textCapitalization: TextCapitalization.words,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _labelController.clear(),
+                        child: Icon(Icons.close,
+                            color: Colors.grey.shade400, size: 16),
+                      ),
+                    ],
                   ),
                 ),
-                // Tombol clear
-                GestureDetector(
-                  onTap: () => _labelController.clear(),
-                  child: const Icon(Icons.close, color: Colors.white38, size: 16),
-                ),
+
+                const SizedBox(height: 10),
+
+                // Palette swatches
+                if (_palette.isNotEmpty)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: _palette.map((color) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Color.fromRGBO(
+                                    color.r, color.g, color.b, 1.0),
+                                border: Border.all(
+                                    color: Colors.grey.shade200, width: 1.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Color.fromRGBO(
+                                        color.r, color.g, color.b, 0.3),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              color.toHex(),
+                              style: const TextStyle(
+                                color: Color(0xFF212121),
+                                fontSize: 8,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
               ],
             ),
           ),
-          // Panel kontrol PCD
+
+          Divider(color: Colors.grey.shade100, height: 1),
+
+          // === PCD CONTROLS ===
           Expanded(
             flex: 2,
             child: Container(
-              color: Colors.grey[900],
+              color: Colors.white,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 children: [
+                  // Section header
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8, top: 4),
+                    child: Text(
+                      'PENGOLAHAN CITRA',
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+
                   // Contrast
                   _buildSlider(
                     label: 'Kontras',
@@ -451,17 +539,34 @@ class _EditScreenState extends State<EditScreen> {
                   ),
 
                   // Histogram Equalization Toggle
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F5F5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Histogram Equalization',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 13)),
+                        Row(
+                          children: [
+                            Icon(Icons.equalizer,
+                                color: _histogramEq
+                                    ? const Color(0xFF2196F3)
+                                    : Colors.grey,
+                                size: 16),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Histogram Equalization',
+                              style: TextStyle(
+                                  color: Color(0xFF212121), fontSize: 13),
+                            ),
+                          ],
+                        ),
                         Switch(
                           value: _histogramEq,
-                          activeColor: Colors.blue,
                           onChanged: (v) {
                             setState(() => _histogramEq = v);
                             _debouncedApply();
@@ -489,14 +594,40 @@ class _EditScreenState extends State<EditScreen> {
     required String valueLabel,
     required double defaultValue,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    final isModified = value != defaultValue;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Row(
         children: [
           SizedBox(
-            width: 90,
-            child: Text(label,
-                style: const TextStyle(color: Colors.white, fontSize: 13)),
+            width: 80,
+            child: Row(
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                      color: Color(0xFF212121),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500),
+                ),
+                if (isModified)
+                  Container(
+                    margin: const EdgeInsets.only(left: 4),
+                    width: 5,
+                    height: 5,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF2196F3),
+                    ),
+                  ),
+              ],
+            ),
           ),
           Expanded(
             child: Slider(
@@ -504,22 +635,29 @@ class _EditScreenState extends State<EditScreen> {
               min: min,
               max: max,
               divisions: divisions,
-              activeColor: Colors.blue,
-              inactiveColor: Colors.white24,
               onChanged: onChanged,
             ),
           ),
           SizedBox(
-            width: 32,
-            child: Text(valueLabel,
-                style:
-                    const TextStyle(color: Colors.white54, fontSize: 12)),
+            width: 28,
+            child: Text(
+              valueLabel,
+              style: TextStyle(
+                color: isModified
+                    ? const Color(0xFF2196F3)
+                    : Colors.grey,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-          // Tombol reset per slider
           GestureDetector(
             onTap: () => onChanged(defaultValue),
-            child: const Icon(Icons.refresh,
-                color: Colors.white38, size: 18),
+            child: Icon(
+              Icons.refresh,
+              color: isModified ? const Color(0xFF2196F3) : Colors.grey.shade300,
+              size: 16,
+            ),
           ),
         ],
       ),

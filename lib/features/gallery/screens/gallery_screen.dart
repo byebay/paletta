@@ -1,10 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/gallery_provider.dart';
 import '../models/palette_entry.dart';
+import '../../../core/utils/wcag_checker.dart';
 import 'wcag_screen.dart';
-import 'dart:io';
 
 class GalleryScreen extends StatelessWidget {
   const GalleryScreen({super.key});
@@ -12,30 +13,43 @@ class GalleryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text('Gallery',
-            style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.white,
+        title: const Text('Library',
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: Color(0xFF212121))),
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(color: Colors.grey.shade200, height: 1),
+        ),
       ),
       body: Consumer<GalleryProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+                child: CircularProgressIndicator(
+                    color: Color(0xFF2196F3)));
           }
 
           if (provider.entries.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.palette_outlined, color: Colors.grey, size: 64),
-                  SizedBox(height: 16),
-                  Text('Belum ada palet tersimpan',
-                      style: TextStyle(color: Colors.grey, fontSize: 16)),
-                  SizedBox(height: 8),
-                  Text('Tap tombol kamera untuk mulai',
-                      style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Icon(Icons.palette_outlined,
+                      color: Colors.grey.shade300, size: 80),
+                  const SizedBox(height: 16),
+                  const Text('Belum ada palet tersimpan',
+                      style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  const Text('Tap tombol Scan untuk mulai',
+                      style:
+                          TextStyle(color: Colors.grey, fontSize: 13)),
                 ],
               ),
             );
@@ -61,64 +75,20 @@ class _PaletteCard extends StatelessWidget {
   final PaletteEntry entry;
   const _PaletteCard({required this.entry});
 
-  void _editLabel(BuildContext context) {
-    final controller = TextEditingController(text: entry.objectLabel);
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text('Edit Nama',
-            style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'Nama objek...',
-            hintStyle: const TextStyle(color: Colors.white38),
-            enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.white24),
-            ),
-            focusedBorder: const OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.blue),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal',
-                style: TextStyle(color: Colors.white54)),
-          ),
-          TextButton(
-            onPressed: () {
-              final newLabel = controller.text.trim();
-              if (newLabel.isNotEmpty) {
-                context.read<GalleryProvider>().updateLabel(
-                      entry,
-                      newLabel,
-                    );
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Simpan',
-                style: TextStyle(color: Colors.blue)),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.grey[900],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,66 +96,59 @@ class _PaletteCard extends StatelessWidget {
           // Thumbnail
           if (entry.thumbnailPath != null)
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
               child: Image.file(
                 File(entry.thumbnailPath!),
                 width: double.infinity,
-                height: 150,
+                height: 160,
                 fit: BoxFit.cover,
                 cacheWidth: 400,
                 cacheHeight: 300,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 150,
-                    color: Colors.grey[800],
-                    child: const Icon(Icons.broken_image, color: Colors.white38),
-                  );
-                },
+                errorBuilder: (_, __, ___) => Container(
+                  height: 160,
+                  color: Colors.grey.shade100,
+                  child: Icon(Icons.image_outlined,
+                      color: Colors.grey.shade300, size: 40),
+                ),
               ),
             ),
 
           // Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Label objek
-                Row(
-                  children: [
-                    const Icon(Icons.label_outline,
-                        color: Colors.white54, size: 16),
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: () => _editLabel(context),
-                      child: Row(
-                        children: [
-                          Text(
-                            entry.objectLabel.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.edit, color: Colors.white38, size: 12),
-                        ],
+                GestureDetector(
+                  onTap: () => _editLabel(context),
+                  child: Row(
+                    children: [
+                      Text(
+                        entry.objectLabel.toUpperCase(),
+                        style: const TextStyle(
+                          color: Color(0xFF212121),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      const Icon(Icons.edit,
+                          color: Color(0xFF2196F3), size: 12),
+                    ],
+                  ),
                 ),
-                // Tanggal
                 Text(
                   _formatDate(entry.createdAt),
-                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                  style: TextStyle(
+                      color: Colors.grey.shade400, fontSize: 11),
                 ),
               ],
             ),
           ),
 
-          const Divider(color: Colors.white12, height: 1),
+          Divider(color: Colors.grey.shade100, height: 1),
 
           // Warna
           Padding(
@@ -197,38 +160,36 @@ class _PaletteCard extends StatelessWidget {
             ),
           ),
 
-          // Tombol WCAG Check
+          // Tombol bawah
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => WcagScreen(entry: entry),
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: Row(
+              children: [
+                // WCAG Check
+                TextButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => WcagScreen(entry: entry),
+                    ),
                   ),
+                  icon: const Icon(Icons.accessibility_new,
+                      color: Color(0xFF2196F3), size: 16),
+                  label: const Text('WCAG',
+                      style: TextStyle(
+                          color: Color(0xFF2196F3), fontSize: 12)),
                 ),
-                icon: const Icon(Icons.accessibility_new,
-                    color: Colors.blue, size: 16),
-                label: const Text('WCAG Check',
-                    style: TextStyle(color: Colors.blue, fontSize: 12)),
-              ),
-            ),
-          ),
-
-          // Tombol hapus
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => _confirmDelete(context),
-                icon: const Icon(Icons.delete_outline,
-                    color: Colors.red, size: 16),
-                label: const Text('Hapus',
-                    style: TextStyle(color: Colors.red, fontSize: 12)),
-              ),
+                const Spacer(),
+                // Hapus
+                TextButton.icon(
+                  onPressed: () => _confirmDelete(context),
+                  icon: const Icon(Icons.delete_outline,
+                      color: Colors.red, size: 16),
+                  label: const Text('Hapus',
+                      style:
+                          TextStyle(color: Colors.red, fontSize: 12)),
+                ),
+              ],
             ),
           ),
         ],
@@ -240,28 +201,82 @@ class _PaletteCard extends StatelessWidget {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  void _confirmDelete(BuildContext context) {
+  void _editLabel(BuildContext context) {
+    final controller =
+        TextEditingController(text: entry.objectLabel);
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text('Hapus Palet?',
-            style: TextStyle(color: Colors.white)),
-        content: const Text('Data ini akan dihapus dari Hive dan MongoDB.',
-            style: TextStyle(color: Colors.white70)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: const Text('Edit Nama',
+            style: TextStyle(
+                fontWeight: FontWeight.bold, fontSize: 16)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: InputDecoration(
+            hintText: 'Nama objek...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide:
+                  const BorderSide(color: Color(0xFF2196F3)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide:
+                  const BorderSide(color: Color(0xFF2196F3)),
+            ),
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Batal',
-                style: TextStyle(color: Colors.white54)),
+                style: TextStyle(color: Colors.grey)),
           ),
+          ElevatedButton(
+            onPressed: () {
+              final newLabel = controller.text.trim();
+              if (newLabel.isNotEmpty) {
+                context
+                    .read<GalleryProvider>()
+                    .updateLabel(entry, newLabel);
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: const Text('Hapus Palet?',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text(
+            'Data ini akan dihapus dari penyimpanan lokal dan cloud.'),
+        actions: [
           TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal',
+                style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red),
             onPressed: () {
               context.read<GalleryProvider>().delete(entry);
               Navigator.pop(context);
             },
-            child: const Text('Hapus',
-                style: TextStyle(color: Colors.red)),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -279,7 +294,8 @@ class _ColorRow extends StatelessWidget {
     final g = colorMap['g'] as int;
     final b = colorMap['b'] as int;
     final hex = colorMap['hex'] as String;
-    final cmyk = Map<String, dynamic>.from(colorMap['cmyk'] as Map);
+    final cmyk =
+        Map<String, dynamic>.from(colorMap['cmyk'] as Map);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -287,41 +303,50 @@ class _ColorRow extends StatelessWidget {
         children: [
           // Color circle
           Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Color.fromRGBO(r, g, b, 1.0),
-              border: Border.all(color: Colors.white24, width: 1.5),
+              border:
+                  Border.all(color: Colors.grey.shade200, width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Color.fromRGBO(r, g, b, 0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 12),
 
-          // Color values
+          // Color info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(hex,
                     style: const TextStyle(
-                        color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 13)),
+                        fontSize: 14,
+                        color: Color(0xFF212121))),
                 Text(
-                  'RGB($r, $g, $b)  •  CMYK(${cmyk['c']}, ${cmyk['m']}, ${cmyk['y']}, ${cmyk['k']})',
-                  style: const TextStyle(color: Colors.white54, fontSize: 10),
+                  'RGB($r, $g, $b)',
+                  style: TextStyle(
+                      color: Colors.grey.shade500, fontSize: 11),
+                ),
+                Text(
+                  'CMYK(${cmyk['c']}, ${cmyk['m']}, ${cmyk['y']}, ${cmyk['k']})',
+                  style: TextStyle(
+                      color: Colors.grey.shade500, fontSize: 11),
                 ),
               ],
             ),
           ),
 
-          // Tombol copy
-          _CopyButton(
-            colorMap: colorMap,
-            r: r, g: g, b: b,
-            hex: hex,
-            cmyk: cmyk,
-          ),
+          // Copy button
+          _CopyButton(r: r, g: g, b: b, hex: hex, cmyk: cmyk),
         ],
       ),
     );
@@ -329,13 +354,11 @@ class _ColorRow extends StatelessWidget {
 }
 
 class _CopyButton extends StatelessWidget {
-  final Map<String, dynamic> colorMap;
   final int r, g, b;
   final String hex;
   final Map<String, dynamic> cmyk;
 
   const _CopyButton({
-    required this.colorMap,
     required this.r,
     required this.g,
     required this.b,
@@ -346,40 +369,66 @@ class _CopyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      color: Colors.grey[850],
-      icon: const Icon(Icons.copy, color: Colors.white54, size: 18),
+      color: Colors.white,
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12)),
+      icon: Icon(Icons.copy_outlined,
+          color: Colors.grey.shade400, size: 18),
       tooltip: 'Copy warna',
-      onSelected: (value) => _copyToClipboard(context, value),
+      onSelected: (value) {
+        Clipboard.setData(ClipboardData(text: value));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Copied: $value'),
+            backgroundColor: const Color(0xFF2196F3),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      },
       itemBuilder: (_) => [
         PopupMenuItem(
           value: hex,
-          child: Text('Copy HEX: $hex',
-              style: const TextStyle(color: Colors.white, fontSize: 13)),
+          child: Row(
+            children: [
+              const Icon(Icons.tag,
+                  size: 16, color: Color(0xFF2196F3)),
+              const SizedBox(width: 8),
+              Text('HEX: $hex',
+                  style: const TextStyle(fontSize: 13)),
+            ],
+          ),
         ),
         PopupMenuItem(
           value: 'rgb($r, $g, $b)',
-          child: Text('Copy RGB: rgb($r, $g, $b)',
-              style: const TextStyle(color: Colors.white, fontSize: 13)),
+          child: Row(
+            children: [
+              const Icon(Icons.circle,
+                  size: 16, color: Color(0xFF2196F3)),
+              const SizedBox(width: 8),
+              Text('RGB: $r, $g, $b',
+                  style: const TextStyle(fontSize: 13)),
+            ],
+          ),
         ),
         PopupMenuItem(
-          value: 'cmyk(${cmyk['c']}%, ${cmyk['m']}%, ${cmyk['y']}%, ${cmyk['k']}%)',
-          child: Text(
-              'Copy CMYK: ${cmyk['c']}, ${cmyk['m']}, ${cmyk['y']}, ${cmyk['k']}',
-              style: const TextStyle(color: Colors.white, fontSize: 13)),
+          value:
+              'cmyk(${cmyk['c']}%, ${cmyk['m']}%, ${cmyk['y']}%, ${cmyk['k']}%)',
+          child: Row(
+            children: [
+              const Icon(Icons.print_outlined,
+                  size: 16, color: Color(0xFF2196F3)),
+              const SizedBox(width: 8),
+              Text(
+                  'CMYK: ${cmyk['c']}, ${cmyk['m']}, ${cmyk['y']}, ${cmyk['k']}',
+                  style: const TextStyle(fontSize: 13)),
+            ],
+          ),
         ),
       ],
-    );
-  }
-
-  void _copyToClipboard(BuildContext context, String value) {
-    Clipboard.setData(ClipboardData(text: value));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Copied: $value'),
-        backgroundColor: Colors.grey[800],
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
     );
   }
 }
