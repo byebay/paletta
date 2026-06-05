@@ -110,7 +110,7 @@ class _ScannerScreenState extends State<ScannerScreen>
   bool _showShutterEffect = false;
 
   // Toggle
-  bool _showBoundingBox = true;
+  bool _showBoundingBox = false;
   FlashToggleMode _flashMode = FlashToggleMode.off;
 
   @override
@@ -169,8 +169,6 @@ class _ScannerScreenState extends State<ScannerScreen>
       final converted = await _isolateRunner.convertFrame(frame);
       if (converted == null) return;
 
-      final paths = await ImageStorageService.saveImageInBackground(converted);
-
       final extractor = KMeansExtractor(k: EnvConfig.kValue);
       List<PaletteColor> palette;
 
@@ -203,27 +201,19 @@ class _ScannerScreenState extends State<ScannerScreen>
         PaintingBinding.instance.imageCache.clear();
         PaintingBinding.instance.imageCache.clearLiveImages();
 
-        // Simpan ke Hive + MongoDB
-        final label = results.isNotEmpty ? results.first.label : 'unknown';
-        await context.read<GalleryProvider>().savePalette(
-          palette: palette,
-          objectLabel: label,
-          imagePath: paths['originalPath'],
-          thumbnailPath: paths['thumbnailPath'],
-        );
+        final label = (_showBoundingBox && results.isNotEmpty) ? results.first.label : 'unknown';
+        final passedDetections = _showBoundingBox ? results : <DetectionResult>[];
 
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => EditScreen(
               capturedImage: converted,
-              detections: results,
+              detections: passedDetections,
               label: label,
             ),
           ),
         );
-
-        print('Palette saved: $label');
       }
     } catch (e) {
       print('Capture error: $e');

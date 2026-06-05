@@ -11,40 +11,79 @@ class WcagScreen extends StatelessWidget {
     final pairResults = WcagChecker.checkPalette(entry.colors);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text('WCAG Check',
-            style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Color(0xFF212121)),
+        title: const Text(
+          'WCAG Check',
+          style: TextStyle(
+            color: Color(0xFF212121),
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(color: Colors.grey.shade200, height: 1),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // Penjelasan singkat
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white12),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: const Text(
-              'WCAG 2.1 mengatur standar kontras warna agar konten mudah dibaca oleh semua orang, termasuk yang memiliki gangguan penglihatan.\n\n'
-              '• AAA ✓  → Kontras ≥ 7.0:1 (Terbaik)\n'
-              '• AA ✓   → Kontras ≥ 4.5:1 (Standar)\n'
-              '• AA Large ✓ → Kontras ≥ 3.0:1 (Teks besar)\n'
-              '• Fail ✗  → Kontras < 3.0:1 (Tidak layak)',
-              style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Color(0xFF2196F3), size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Informasi Standar Kontras',
+                      style: TextStyle(
+                        color: Color(0xFF212121),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'WCAG 2.1 mengatur standar kontras warna agar konten mudah dibaca oleh semua orang, termasuk yang memiliki gangguan penglihatan.\n\n'
+                  '• AAA ✓  → Kontras ≥ 7.0:1 (Terbaik)\n'
+                  '• AA ✓   → Kontras ≥ 4.5:1 (Standar)\n'
+                  '• AA Large ✓ → Kontras ≥ 3.0:1 (Teks besar)\n'
+                  '• Fail ✗  → Kontras < 3.0:1 (Tidak layak)',
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12, height: 1.6),
+                ),
+              ],
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // Header palet
-          const Text(
+          Text(
             'KOMBINASI WARNA',
             style: TextStyle(
-              color: Colors.white54,
+              color: Colors.grey.shade500,
               fontSize: 11,
               letterSpacing: 1.5,
               fontWeight: FontWeight.bold,
@@ -78,28 +117,34 @@ class _WcagPairCard extends StatelessWidget {
     // Tentukan warna badge berdasarkan rating
     Color badgeColor;
     if (result.passAAA) {
-      badgeColor = Colors.green;
+      badgeColor = Colors.green.shade700;
     } else if (result.passAA) {
-      badgeColor = Colors.lightGreen;
+      badgeColor = Colors.green.shade500;
     } else if (result.contrastRatio >= 3.0) {
-      badgeColor = Colors.orange;
+      badgeColor = Colors.orange.shade700;
     } else {
-      badgeColor = Colors.red;
+      badgeColor = Colors.red.shade700;
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
           // Preview warna berdampingan
           ClipRRect(
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(12)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: Row(
               children: [
                 // Warna 1
@@ -118,7 +163,7 @@ class _WcagPairCard extends StatelessWidget {
                         )
                             ? Colors.white
                             : Colors.black,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -140,7 +185,7 @@ class _WcagPairCard extends StatelessWidget {
                         )
                             ? Colors.white
                             : Colors.black,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -152,7 +197,7 @@ class _WcagPairCard extends StatelessWidget {
 
           // Info kontras
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -160,13 +205,13 @@ class _WcagPairCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Contrast Ratio',
-                        style:
-                            TextStyle(color: Colors.white54, fontSize: 11)),
+                    Text('Contrast Ratio',
+                        style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+                    const SizedBox(height: 4),
                     Text(
                       '${result.contrastRatio.toStringAsFixed(2)}:1',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFF212121),
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -176,12 +221,11 @@ class _WcagPairCard extends StatelessWidget {
 
                 // Badge rating
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: badgeColor.withOpacity(0.2),
+                    color: badgeColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: badgeColor, width: 1.5),
+                    border: Border.all(color: badgeColor.withOpacity(0.3), width: 1.5),
                   ),
                   child: Text(
                     result.rating,
